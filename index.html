@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAFIN Brick Breaker Game</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            background-color: black;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background-color: #00008B;
+            border: 2px solid white;
+        }
+        #startScreen, #nameInput {
+            color: white;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        #nameInput input {
+            font-size: 20px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        #nameInput button {
+            font-size: 20px;
+            padding: 10px 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="startScreen">
+        <h1 style="color: white;" id="safinText">SAFIN</h1>
+        <h2 style="color: white;">Press SPACE to start</h2>
+    </div>
+    <div id="nameInput" style="display: none;">
+        <h2>Enter your name:</h2>
+        <input type="text" id="playerName" placeholder="Your Name">
+        <button onclick="startGame()">Start Game</button>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        let playerName = '';
+        let gameStarted = false;
+        let gamePaused = true;
+        let lives = 5;
+        let score = 0;
+
+        // Ball variables
+        const ballRadius = 10;
+        let x = canvas.width / 2;
+        let y = canvas.height - 30;
+        let dx = 4;  // Increased speed
+        let dy = -4;  // Increased speed
+
+        // Paddle variables
+        const paddleHeight = 10;
+        const paddleWidth = 75;
+        let paddleX = (canvas.width - paddleWidth) / 2;
+        let rightPressed = false;
+        let leftPressed = false;
+
+        // Brick variables
+        const brickWidth = 75;
+        const brickHeight = 20;
+        const brickPadding = 10;
+
+        let bricks = [];
+
+        let safin = {
+            x: Math.random() * (window.innerWidth - 100),
+            y: Math.random() * (window.innerHeight - 50),
+            dx: 2,
+            dy: 2,
+            color: randomColor()
+        };
+
+        window.onload = function() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            drawSAFIN();
+            document.addEventListener("keydown", function(e) {
+                if (e.code === "Space" && !gameStarted) {
+                    document.getElementById('startScreen').style.display = 'none';
+                    document.getElementById('nameInput').style.display = 'block';
+                    gameStarted = true;
+                }
+            });
+        };
+
+        function drawSAFIN() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "50px Arial";
+            ctx.fillStyle = safin.color;
+            ctx.fillText("SAFIN", safin.x, safin.y);
+
+            safin.x += safin.dx;
+            safin.y += safin.dy;
+
+            if (safin.x + 100 > canvas.width || safin.x < 0) {
+                safin.dx = -safin.dx;
+                safin.color = randomColor();
+            }
+            if (safin.y + 50 > canvas.height || safin.y < 0) {
+                safin.dy = -safin.dy;
+                safin.color = randomColor();
+            }
+
+            if (!gameStarted) {
+                requestAnimationFrame(drawSAFIN);
+            }
+        }
+
+        function startGame() {
+            playerName = document.getElementById('playerName').value || 'Player';
+            document.getElementById('nameInput').style.display = 'none';
+            initializeBricks();
+            gamePaused = false;
+            draw();
+        }
+
+        function initializeBricks() {
+            bricks = [];
+            const numRows = 12; // Set to 12 rows
+            const numCols = 36; // Set to 36 columns
+            const brickWidth = (canvas.width - (brickPadding * (numCols - 1))) / numCols;
+
+            for (let r = 0; r < numRows; r++) {
+                for (let c = 0; c < numCols; c++) {
+                    let brickX = c * (brickWidth + brickPadding);
+                    let brickY = r * (brickHeight + brickPadding);
+                    bricks.push({ x: brickX, y: brickY, width: brickWidth, height: brickHeight, status: 1 });
+                }
+            }
+        }
+
+        function keyDownHandler(e) {
+            if (e.code === "Right" || e.code === "ArrowRight") {
+                rightPressed = true;
+            } else if (e.code === "Left" || e.code === "ArrowLeft") {
+                leftPressed = true;
+            } else if (e.code === "Space") {
+                if (gamePaused) {
+                    gamePaused = false;
+                    draw();
+                }
+            }
+        }
+
+        function keyUpHandler(e) {
+            if (e.code === "Right" || e.code === "ArrowRight") {
+                rightPressed = false;
+            } else if (e.code === "Left" || e.code === "ArrowLeft") {
+                leftPressed = false;
+            }
+        }
+
+        document.addEventListener("keydown", keyDownHandler, false);
+        document.addEventListener("keyup", keyUpHandler, false);
+
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+            ctx.fillStyle = "#FF4500";
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function drawPaddle() {
+            ctx.beginPath();
+            ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+            ctx.fillStyle = "#0095DD";
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function drawBricks() {
+            bricks.forEach(brick => {
+                if (brick.status === 1) {
+                    ctx.beginPath();
+                    ctx.rect(brick.x, brick.y, brick.width, brick.height);
+                    ctx.fillStyle = "#00FF7F";
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            });
+        }
+
+        function collisionDetection() {
+            bricks.forEach(brick => {
+                if (brick.status === 1) {
+                    if (x > brick.x && x < brick.x + brick.width && y > brick.y && y < brick.y + brick.height) {
+                        dy = -dy;
+                        brick.status = 0;
+                        score++;
+                        if (score == bricks.length) {
+                            alert(`Congrats, ${playerName}, You Are Gay!`);
+                            document.location.reload();
+                        }
+                    }
+                }
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBricks();
+            drawBall();
+            drawPaddle();
+            collisionDetection();
+
+            if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
+                dx = -dx;
+            }
+            if (y + dy < ballRadius) {
+                dy = -dy;
+            } else if (y + dy > canvas.height - ballRadius) {
+                if (x > paddleX && x < paddleX + paddleWidth) {
+                    dy = -dy;
+                } else {
+                    lives--;
+                    if (lives === 0) {
+                        alert("You Are Definitely A Gay!");
+                        document.location.reload();
+                    } else {
+                        x = canvas.width / 2;
+                        y = canvas.height - 30;
+                        paddleX = (canvas.width - paddleWidth) / 2;
+                        gamePaused = true;
+                    }
+                }
+            }
+
+            if (rightPressed && paddleX < canvas.width - paddleWidth) {
+                paddleX += 7;
+            } else if (leftPressed && paddleX > 0) {
+                paddleX -= 7;
+            }
+
+            x += dx;
+            y += dy;
+
+            if (!gamePaused) {
+                requestAnimationFrame(draw);
+            }
+        }
+
+        function randomColor() {
+            const letters = "0123456789ABCDEF";
+            let color = "#";
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
